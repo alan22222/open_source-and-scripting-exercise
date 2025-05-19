@@ -1,0 +1,102 @@
+#!/usr/bin/env bash
+# Analyze board game data from a TSV file.
+# -Finds most popular mechanics and domains
+# -Calculates correlation between year/complexity and rating
+# Usage: ./analysis input.tsv
+
+file="$1" # Input TSV file
+
+# Check if file exists
+if [ ! -f "$file" ]; then
+    echo "Error: File not found"
+    exit 1
+fi
+
+#Most popular Mechanics
+awk -F '\t' '
+NR > 1 && $13 != "" { #mechanics save on column number 13
+    split($13, m, ", ")
+    for (i in m) mech[m[i]]++
+}
+END { #find the most common mechanics
+    for (k in mech) {
+        if (mech[k] > max) {
+            max = mech[k]
+            top = k
+        }
+    }
+    print "The most popular game mechanics is " top " found in " max " games"
+}' "$file"
+
+#Most popular Domain
+awk -F '\t' '
+NR > 1 && $14 != "" {  #domain stored in column number 14
+    split($14, d, ", ") 
+    for (i in d) domain[d[i]]++
+}
+END { #find most common domains
+    for (k in domain) {
+        if (domain[k] > max) {
+            max = domain[k]
+            top = k
+        }
+    }
+    print "The most game domain is " top " found in " max " games"
+}' "$file"
+
+#Correlation between Year Published and Rating Average
+awk -F '\t' '
+BEGIN {
+    sum_x = 0 
+    sum_y = 0
+    sum_x2 = 0
+    sum_y2 = 0
+    sum_xy = 0
+    n = 0
+}
+NR > 1 && $3 != "" && $9 != "" {
+    x = $3 + 0      # Year Published
+    y = $9 + 0      # Rating Average
+    sum_x += x
+    sum_y += y
+    sum_x2 += x*x
+    sum_y2 += y*y
+    sum_xy += x*y
+    n++
+}
+END {
+    num = n * sum_xy - sum_x * sum_y
+    den = sqrt((n * sum_x2 - sum_x^2) * (n * sum_y2 - sum_y^2))
+    corr = (den == 0 ? 0 : num / den)
+    printf "The correlation between the year of publication and the average rating is %.3f\n", corr
+}' "$file"
+
+
+#Correlation between Complexity and Rating Average
+awk -F '\t' '
+BEGIN {
+    sum_x = 0
+    sum_y = 0
+    sum_x2 = 0
+    sum_y2 = 0
+    sum_xy = 0
+    n = 0
+}
+NR > 1 && $11 != "" && $9 != "" {
+    gsub(",", ".", $9)
+    gsub(",", ".", $11)
+    x = $11 + 0 # Complexity Average
+    y = $9 + 0 # Rating Average
+    sum_x += x
+    sum_y += y
+    sum_x2 += x*x
+    sum_y2 += y*y
+    sum_xy += x*y
+    n++
+}
+END {
+    num = n * sum_xy - sum_x * sum_y
+    den = sqrt((n * sum_x2 - sum_x^2) * (n * sum_y2 - sum_y^2))
+    corr = (den == 0 ? 0 : num / den)
+    printf "The correlation between the complexity of a game and its average rating is %.3f\n", corr
+}' "$file"

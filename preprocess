@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+#Cleans and transforms a semicolon-delimited file for analysis.
+#  - Adds missing IDs
+#  - Converts commas to dots in numeric fields
+#  - Outputs tab-separated values
+#  - Removes non-ASCII characters
+# Usage: ./preprocess input.txt > output.tsv
+
+
+input_file="$1" # input file
+
+# Get the maximum existing ID value
+max_id=$(awk -F';' 'NR > 1 && $1 ~ /^[0-9]+$/ { if ($1+0 > max) max = $1+0 } END { print max }' "$input_file")
+
+# Transform the file
+awk -v max_id="$max_id" '
+BEGIN {
+    FS=";"; #field separator
+    new_id = max_id + 1; 
+}
+{
+    sub(/\r$/, "")# Remove Windows carriage return
+
+  # Convert commas to dots in float columns (9 and 11)
+    gsub(/,/, ".", $9)
+    gsub(/,/, ".", $11)
+
+  # Assign new ID if missing
+    if (NR > 1 && $1 == "") {
+        $1 = new_id++;
+    }
+
+  # Output as tab-separated line
+    for (i = 1; i <= NF; i++) {
+        printf "%s", $i
+        if (i < NF) {
+            printf "\t"
+        } else {
+            printf "\n"
+        }
+    }
+}
+' "$input_file" | tr -cd '\11\12\15\40-\176' # Strip non-ASCII characters

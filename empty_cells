@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# empty_cells: count empty cells per column in a semicolon-delimited file
+# usage: ./empty_cells bgg_dataset.txt ";"
+
+file="$1" #file read
+SEP="$2"  #read seprator(expected ";")
+
+awk -v SEP="$SEP" '
+# function to remove the trailing carriage return
+function trimCR(s) {
+  sub(/\r$/, "", s)
+  return s
+}
+
+NR==1 {
+  # header line:extract column names
+  header = trimCR($0)  
+  n = split(header, hdr, SEP)
+  max = n 
+  for(i=1; i<=max; i++){ 
+    cols[i] = hdr[i]
+    counts[i] = 0
+  }
+  next 
+}
+
+{
+#extract lines
+  line = trimCR($0)
+  m = split(line, fld, SEP)
+  for(i=1; i<=max; i++){
+    if (i>m || fld[i]=="") {#condition check more feilds or empty
+      counts[i]++
+    }
+  }
+}
+
+END {
+  for(i=1; i<=max; i++){
+    printf "%s: %d\n", cols[i], counts[i]#result printing 
+  }
+}
+' "$file"
